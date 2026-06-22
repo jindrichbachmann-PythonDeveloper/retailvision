@@ -1,0 +1,31 @@
+﻿# Python
+__pycache__/
+*.pyc
+
+# Virtual env
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Secrets
+.env
+*.env
+
+# Test outputs
+*.png
+*.jpg
+*.jpeg
+*.json
+
+# Archives
+*.zip
+
+# OS
+Thumbs.db
+.DS_Store

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>Přihlášení – Hodinářství Jindra</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family:Arial,Helvetica,sans-serif; background:#f7f8fb; margin:0; padding:2rem; color:#222; }
+    .card { max-width:520px; margin:0 auto; background:#fff; border:1px solid #ddd; border-radius:12px; padding:1rem; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+    label { display:block; margin-top:.6rem; font-weight:600; }
+    input { width:100%; padding:.6rem; border:1px solid #ddd; border-radius:8px; margin-top:.2rem; }
+    .btn { background:#2563eb; color:#fff; border:none; border-radius:8px; padding:.6rem 1rem; cursor:pointer; margin-top:.8rem; }
+    .btn-warn { background:#b91c1c; color:#fff; border:none; border-radius:8px; padding:.6rem 1rem; cursor:pointer; margin-left:.4rem; }
+    .muted { color:#666; font-size:.92rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>🔐 Přihlášení</h2>
+    <div class="muted">Zadej své přihlašovací údaje.</div>
+
+    <label>Uživatelské jméno</label>
+    <input id="loginUser" autocomplete="username" />
+
+    <label>Heslo</label>
+    <div style="display:flex; gap:.4rem; align-items:center;">
+      <input id="loginPass" type="password" autocomplete="current-password" />
+      <button
+        id="toggleLoginPass"
+        type="button"
+        class="btn"
+        style="margin-top:.2rem; width:auto; white-space:nowrap;"
+      >👁</button>
+    </div>
+
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+      <button class="btn" id="btnLogin" type="button">Přihlásit se</button>
+      <button class="btn-warn" id="btnBack" type="button">Zpět</button>
+    </div>
+
+    <div id="loginInfo" class="muted" style="margin-top:.6rem;"></div>
+  </div>
+
+  <script>
+    async function doLogin() {
+      const u = document.getElementById("loginUser")?.value?.trim();
+      const p = document.getElementById("loginPass")?.value || "";
+
+      if (!u || !p) {
+        alert("Zadej uživatelské jméno a heslo.");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/auth/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: u, password: p })
+        });
+
+        if (!res.ok) {
+          document.getElementById("loginInfo").textContent =
+            "❌ Přihlášení se nezdařilo.";
+
+          alert("❌ Špatné jméno nebo heslo.");
+          return;
+        }
+
+        const data = await res.json();
+
+        console.log("LOGIN RESPONSE:", data);
+
+        const token = data.access_token || data.token || data.jwt || "";
+
+        console.log("TOKEN:", token);
+
+        localStorage.setItem("access_token", token);
+
+        document.getElementById("loginInfo").textContent =
+          "✅ Přihlášeno jako: " + (data.user?.username || "");
+
+        alert("✅ Přihlášení proběhlo úspěšně.");
+
+        if (window.opener && !window.opener.closed) {
+          window.opener.postMessage(
+            {
+              type: "AUTH_SUCCESS",
+              token: data.access_token || "",
+            },
+            window.location.origin
+          );
+          window.close();
+        } else {
+          window.location.href = "/";
+        }
+
+      } catch (e) {
+        document.getElementById("loginInfo").textContent =
+          "❌ Chyba spojení se serverem.";
+
+        alert("❌ Nepodařilo se spojit se serverem.");
+        console.error(e);
+      }
+    }
+
+    document.getElementById("btnLogin")?.addEventListener("click", doLogin);
+
+    document.getElementById("toggleLoginPass")?.addEventListener("click", () => {
+      const input = document.getElementById("loginPass");
+      const btn = document.getElementById("toggleLoginPass");
+
+      if (!input || !btn) return;
+
+      const visible = input.type === "text";
+
+      input.type = visible ? "password" : "text";
+      btn.textContent = visible ? "👁" : "🙈";
+    });
+
+    document.getElementById("btnBack")?.addEventListener("click", () => {
+      if (window.opener && !window.opener.closed) {
+        window.opener.postMessage(
+          { type: "AUTH_BACK" },
+          window.location.origin
+        );
+        window.close();
+      } else {
+        window.location.href = "/";
+      }
+    });
+  </script>
+</body>
+</html>

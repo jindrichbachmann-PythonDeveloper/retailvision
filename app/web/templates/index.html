@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <title>RetailVision obchod</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { --bg:#f7f8fb; --card:#fff; --b:#ddd; --fg:#222; --primary:#2563eb; --ok:#16a34a; --warn:#b91c1c; }
+    body { font-family:Arial,Helvetica,sans-serif; background:var(--bg); margin:0; padding:2rem; color:var(--fg); }
+    h1,h2 { margin:.4rem 0 1rem; }
+    .card { background:var(--card); border:1px solid var(--b); border-radius:12px; padding:1rem; margin-bottom:1rem; box-shadow:0 2px 8px rgba(0,0,0,.05); }
+    input, select, textarea { width:100%; padding:.5rem; border:1px solid var(--b); border-radius:8px; margin-top:.2rem; box-sizing:border-box; }
+    label { display:block; margin-top:.5rem; font-weight:600; }
+    .btn { background:var(--primary); color:#fff; border:none; border-radius:8px; padding:.6rem 1rem; cursor:pointer; margin-top:.6rem; }
+    .btn:hover { background:#1e40af; }
+    .btn-ok { background:var(--ok); color:#fff; border:none; border-radius:8px; padding:.6rem 1rem; cursor:pointer; margin-left:.4rem; }
+    .btn-warn { background:var(--warn); color:#fff; border:none; border-radius:8px; padding:.6rem 1rem; cursor:pointer; margin-left:.4rem; }
+    .row { display:flex; flex-wrap:wrap; gap:1rem; }
+    .col { flex:1 1 320px; }
+    img { max-width:280px; border-radius:10px; margin-top:.5rem; }
+    .pill { display:inline-block; background:#eef; border:1px solid #ccd; padding:.2rem .6rem; border-radius:999px; font-size:.8rem; margin-right:.3rem; margin-top:.3rem; }
+    .log { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas; background:#0b1220; color:#c7e1ff; border-radius:8px; padding:.75rem; white-space:pre-wrap; max-height:280px; overflow:auto; }
+    .hr { border-top:1px dashed #ccc; margin:.75rem 0; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(260px,1fr)); gap:1rem; }
+
+    .cam-fullscreen {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 9999;
+      display: none;
+    }
+    .cam-fullscreen.active { display:block; }
+
+    .cam-stage {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+
+    .cam-stage video { z-index: 1; }
+    .cam-stage canvas { z-index: 2; }
+
+    .cam-stage video,
+    .cam-stage canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .cam-controls {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 14px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,0));
+      padding-bottom: calc(14px + env(safe-area-inset-bottom));
+      z-index: 3;
+    }
+
+    .cam-controls .btn,
+    .cam-controls .btn-ok,
+    .cam-controls .btn-warn {
+      padding: 14px 18px;
+      border-radius: 999px;
+      font-size: 16px;
+      margin: 0;
+    }
+
+    .cam-top {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      padding: 10px 14px;
+      color: #fff;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(to bottom, rgba(0,0,0,.65), rgba(0,0,0,0));
+      padding-top: calc(10px + env(safe-area-inset-top));
+      z-index: 3;
+    }
+
+    .cam-top select {
+      width: auto;
+      max-width: 45vw;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.25);
+      background: rgba(0,0,0,.35);
+      color: #fff;
+    }
+
+    .cam-embed-wrap { position: relative; max-width: 360px; }
+    
+    .cam-toast {
+      position: absolute;
+      left: 50%;
+      top: 90px;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.78);
+      color: #fff;
+      padding: 12px 18px;
+      border-radius: 999px;
+      font-size: 18px;
+      font-weight: 700;
+      z-index: 10;
+      display: none;
+    }
+    
+    .auth-only { display: none; }
+     .image-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.92);
+        z-index: 20000;
+
+        display: none;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .image-modal.active {
+        display: flex;
+    }
+
+    .image-modal-img {
+        max-width: 96vw;
+        max-height: 92vh;
+        object-fit: contain;
+        border-radius: 12px;
+        box-shadow: 0 0 30px rgba(0,0,0,.6);
+    }
+
+    .image-modal-close {
+        position: absolute;
+        top: 18px;
+        left: 50%;
+        transform: translateX(-50%);
+
+        width: 54px;
+        height: 54px;
+
+        border: 0;
+        border-radius: 999px;
+
+        background: rgba(255,255,255,.15);
+        color: white;
+
+        font-size: 32px;
+        font-weight: bold;
+
+        cursor: pointer;
+        z-index: 20001;
+
+        display: none;
+    }
+
+    .image-modal-close:hover {
+        background: rgba(255,255,255,.28);
+    }
+
+  </style>
+</head>
+<body>
+  <h1 id="shopTitle">⌚ RetailVision obchod</h1>
+
+  <div id="camFullscreen" class="cam-fullscreen" aria-hidden="true">
+    <div class="cam-stage">
+      <video id="camFsVideo" playsinline autoplay muted></video>
+      <canvas id="camFsOverlay"></canvas>
+      <div id="camToast" class="cam-toast">📸 Vyfoceno</div>
+    </div>
+
+    <div class="cam-top">
+      <div>📷 Kamera</div>
+      <button id="camFsClose" class="btn-warn" type="button">✕ Zavřít</button>
+    </div>
+
+    <div class="cam-controls">
+      <button class="btn" type="button" id="btnStartCamFs">Zapnout</button>
+      <button class="btn-warn" type="button" id="btnStopCamFs">Vypnout</button>
+      <button class="btn-ok" type="button" id="btnSnapFs">Vyfotit</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🔐 Přístup do systému</h2>
+
+    <p style="margin:.4rem 0 .8rem; color:#444;">
+      Plný přístup je <strong>500 Kč / měsíc</strong>. Nejprve se přihlas nebo si založ účet.
+    </p>
+
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap;">
+      <button class="btn" type="button" id="btnOpenLogin">Přihlásit</button>
+      <button class="btn-ok" type="button" id="btnOpenRegister">Založit účet</button>
+      <button class="btn-warn" type="button" id="btnOpenForgot">Zapomenuté heslo</button>
+      <button class="btn-warn auth-only" type="button" id="btnLogout">Odhlásit</button>
+      <button
+        type="button"
+        id="btnTheme"
+        style="
+          background:#ff6600;
+          color:white;
+          border:none;
+          border-radius:8px;
+          padding:.6rem 1rem;
+          cursor:pointer;
+        ">
+        🎨 Vzhled
+      </button>
+    </div>
+
+      <div
+        id="themeMenu"
+        style="
+          display:none;
+          position:absolute;
+          background:white;
+          border:1px solid #ddd;
+          border-radius:10px;
+          padding:.5rem;
+          margin-top:3rem;
+          box-shadow:0 4px 12px rgba(0,0,0,.15);
+          z-index:9999;
+        ">
+
+        <button class="btn" type="button" data-theme="classic">
+          🎨 Klasická
+        </button>
+
+        <button class="btn" type="button" data-theme="dark">
+          🌙 Dark Premium
+        </button>
+
+        <button class="btn" type="button" data-theme="market">
+          🛒 Marketplace
+        </button>
+
+      </div>
+
+    <div style="margin-top:.6rem; font-size:.9rem; color:#666;">
+      Poznámka: přihlášení/registrace se otevře v nové kartě.
+    </div>
+  </div>
+
+  <div class="card auth-only">
+    <h2>📑 Fakturace</h2>
+    <div class="row" style="gap:1rem;">
+      <div class="col">
+        <label>Složka pro faktury (na serveru):</label>
+        <input type="text" id="invoice_base_dir" placeholder="např. D:/Faktury/Hodinky" />
+        <button class="btn" type="button" id="btnSaveInvoiceDir">💾 Uložit složku</button>
+        <div id="invoiceDirInfo" style="margin-top:.5rem; font-size:.85rem; color:#555;"></div>
+      </div>
+      <div class="col">
+        <label>Rok:</label>
+        <input type="number" id="invoice_year" value="" />
+        <label>Měsíc (1–12):</label>
+        <input type="number" id="invoice_month" value="" min="1" max="12" />
+        <div style="margin-top:.5rem; display:flex; flex-wrap:wrap; gap:.5rem;">
+          <button class="btn-ok" type="button" id="btnOpenCsv">📥 Otevřít fakturační CSV</button>
+          <button class="btn-warn" type="button" id="btnSendCsv">📧 Poslat účetní</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card auth-only">
+    <h2>Analýza hodinek</h2>
+    <form id="uploadForm" enctype="multipart/form-data" onsubmit="return false;">
+      <input type="file" name="files" multiple accept="image/*" />
+      <label><input type="checkbox" id="ai_filter" checked> Použít AI filtr kvality</label>
+      <label><input type="checkbox" id="recognize" checked> Rozpoznat model (GPT)</label>
+      <button class="btn" type="button" id="btnAnalyze">Analyzuj</button>
+    </form>
+    <div class="hr"></div>
+    <div id="progress" class="log">Připraveno…</div>
+  </div>
+
+  <div class="card auth-only">
+    <h2>📷 Kamera (mobil)</h2>
+
+    <div class="row">
+      <div class="col">
+        <button class="btn" type="button" id="btnStartCam">Zapnout kameru</button>
+        <button class="btn-warn" type="button" id="btnStopCam">Vypnout</button>
+        <button class="btn-ok" type="button" id="btnSnap">Vyfotit</button>
+
+        <label style="margin-top:.5rem;">Kamera:</label>
+        <select id="camFacing">
+          <option value="environment" selected>Zadní (environment)</option>
+          <option value="user">Přední (selfie)</option>
+        </select>
+
+        <label style="margin-top:.5rem;">Rozlišení (max):</label>
+        <select id="camRes">
+          <option value="1280x720" selected>1280×720</option>
+          <option value="1920x1080">1920×1080</option>
+          <option value="9999x9999">co nejvíc</option>
+        </select>
+
+        <div class="pill" id="camInfo">Kamera vypnutá</div>
+      </div>
+
+      <div class="col">
+        <div style="position:relative; max-width:360px;">
+          <video id="camVideo" playsinline autoplay muted style="width:100%; border-radius:12px; background:#000;"></video>
+          <canvas id="camOverlay" style="position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;"></canvas>
+        </div>
+
+        <canvas id="camCapture" style="display:none;"></canvas>
+
+        <div class="hr"></div>
+        <div><strong>Poslední fotka:</strong></div>
+        <img id="lastSnap" style="max-width:360px; display:none;" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📦 Skladové položky</h2>
+    <div class="row auth-only" style="align-items:center; justify-content:space-between;">
+      <select id="filter" onchange="loadFiltered()">
+        <option value="approved">✅ Schválené</option>
+        <option value="rejected">❌ Neschválené</option>
+        <option value="all" selected>📋 Vše</option>
+      </select>
+      <button class="btn" onclick="loadFiltered()">🔄 Načíst</button>
+      <button class="btn-warn" id="btnClearAll" type="button">🧹 Smazat všechny fotky</button>
+    </div>
+    <div id="results" class="grid"></div>
+  </div>
+
+  <div class="card">
+    <h2>🛒 Košík</h2>
+
+    <div id="cartItems" class="grid"></div>
+    <div id="cartSummary" style="margin-top:.5rem; font-weight:600;"></div>
+
+    <div id="checkoutFormBox" class="card" style="margin-top:1rem; display:none;">
+      <h3>Údaje zákazníka</h3>
+
+      <label for="customerFirstName">Jméno</label>
+      <input id="customerFirstName" type="text" placeholder="Jan" />
+
+      <label for="customerLastName">Příjmení</label>
+      <input id="customerLastName" type="text" placeholder="Novák" />
+
+      <label for="customerEmail">E-mail</label>
+      <input id="customerEmail" type="email" placeholder="jan@email.cz" />
+
+      <div style="margin-top:.5rem; display:flex; gap:.5rem; align-items:center; flex-wrap:wrap;">
+        <span id="emailVerifiedBadge" style="display:none; color:green; font-weight:bold;">✅ E-mail ověřen</span>
+      </div>
+      
+      <label for="customerPhone">Telefon</label>
+      <input id="customerPhone" type="text" placeholder="+420..." />
+      
+      <div id="shippingAddressBox">
+
+            <label for="customerStreet">Ulice</label>
+            <input id="customerStreet" type="text" placeholder="Ulice 1" />
+
+            <label for="customerCity">Město</label>
+            <input id="customerCity" type="text" placeholder="Praha" />
+
+            <label for="customerPostcode">PSČ</label>
+            <input id="customerPostcode" type="text" placeholder="11000" />
+
+      </div>
+
+      <label for="customerBankAccount">Bankovní účet pro fakturu</label>
+      <input id="customerBankAccount" type="text" placeholder="123456789/0100" />
+    </div>
+
+    <div style="margin-top:1rem; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem;">
+      <div>
+        <label for="shippingMethod">Způsob dopravy:</label>
+        <select id="shippingMethod">
+          <option value="personal_pickup">Osobní odběr na prodejně</option>
+          <option value="zasilkovna">Zásilkovna</option>
+          <option value="ppl">PPL</option>
+          <option value="dpd">DPD</option>
+          <option value="ceska_posta">Česká pošta</option>
+        </select>
+      </div>
+      <div>
+        <label for="paymentMethod">Způsob platby:</label>
+        <select id="paymentMethod">
+          <option value="card">Kartou (Stripe)</option>
+          <option value="paypal" disabled>PayPal (připravujeme)</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:1rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+      <button class="btn-ok" id="btnCheckout" type="button">Zaplatit košík</button>
+      <button class="btn-warn" id="btnClearCart" type="button">Vyprázdnit košík</button>
+    </div>
+  </div>
+
+  <div class="card auth-only">
+    <h2>🧾 Objednávky</h2>
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.5rem">
+      <button class="btn" id="btnLoadOrders" type="button">Načíst objednávky</button>
+      <button class="btn-warn" id="btnArchiveOrders" type="button">🗄 Archivovat staré objednávky</button>
+    </div>
+    <div id="ordersContainer"></div>
+  </div>
+
+  <script>
+    function applyShopName() {
+      const shopName = localStorage.getItem("shop_name") || "Hodinářství XYZ";
+
+      document.title = shopName;
+
+      const title = document.getElementById("shopTitle");
+      if (title) title.textContent = "⌚ " + shopName;
+    }
+
+    function applyTheme(theme) {
+      const root = document.documentElement;
+
+      if (theme === "classic") {
+        root.style.setProperty("--bg", "#f7f8fb");
+        root.style.setProperty("--card", "#ffffff");
+        root.style.setProperty("--fg", "#222222");
+        root.style.setProperty("--primary", "#2563eb");
+      }
+
+      if (theme === "dark") {
+        root.style.setProperty("--bg", "#121212");
+        root.style.setProperty("--card", "#1e1e1e");
+        root.style.setProperty("--fg", "#ffffff");
+        root.style.setProperty("--primary", "#d4af37");
+      }
+
+      if (theme === "market") {
+        root.style.setProperty("--bg", "#f4f4f4");
+        root.style.setProperty("--card", "#ffffff");
+        root.style.setProperty("--fg", "#111111");
+        root.style.setProperty("--primary", "#ff6600");
+      }
+
+      localStorage.setItem("shop_theme", theme);
+    }
+
+    function getToken() {
+      const t = localStorage.getItem("access_token");
+      console.log("🔑 TOKEN Z LOCAL STORAGE:", t);
+      if (!t) console.warn("❌ TOKEN NENÍ V LOCAL STORAGE!");
+      return t;
+    }
+
+    function updateAuthUI() {
+      const token = getToken();
+      const els = document.querySelectorAll(".auth-only");
+      els.forEach((el) => {
+        el.style.display = token ? "block" : "none";
+      });
+    }
+
+    function authHeaders(extra = {}) {
+      const t = getToken();
+      console.log("🔑 TOKEN PRI REQUESTU:", t);
+      const h = { ...extra };
+      if (t) h["Authorization"] = "Bearer " + t;
+      console.log("📇 HEADERS:", h);
+      return h;
+    }
+
+    function getSessionId() {
+      let sid = sessionStorage.getItem("x_session_id");
+      if (!sid) {
+        sid = (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + "_" + Math.random());
+        sessionStorage.setItem("x_session_id", sid);
+      }
+      return sid;
+    }
+    
+    function getEmailProviderUrl(email) {
+      const domain = (email.split("@")[1] || "").toLowerCase();
+
+      const map = {
+        "gmail.com": "https://mail.google.com/",
+        "seznam.cz": "https://email.seznam.cz/",
+        "centrum.cz": "https://mail.centrum.cz/",
+        "atlas.cz": "https://mail.centrum.cz/",
+        "volny.cz": "https://mail.centrum.cz/",
+        "outlook.com": "https://outlook.live.com/mail/",
+        "hotmail.com": "https://outlook.live.com/mail/",
+        "live.com": "https://outlook.live.com/mail/",
+        "icloud.com": "https://www.icloud.com/mail/",
+        "yahoo.com": "https://mail.yahoo.com/"
+      };
+
+      return map[domain] || ("https://" + domain);
+    }
+    
+    function logProgress(msg) {
+      const el = document.getElementById("progress");
+      if (!el) return;
+      if (typeof msg === "object") msg = JSON.stringify(msg, null, 2);
+      el.textContent += "\n" + msg;
+      el.scrollTop = el.scrollHeight;
+    }
+
+    async function loadSecureImages() {
+      const imgs = document.querySelectorAll(".secured-img");
+
+      for (const img of imgs) {
+        const id = img.getAttribute("data-id");
+        if (!id) continue;
+
+        try {
+          const res = await fetch("/api/image/" + id, {
+            headers: authHeaders({ "x-session-id": getSessionId() })
+          });
+
+          if (!res.ok) continue;
+
+          const blob = await res.blob();
+          img.src = URL.createObjectURL(blob);
+          
+          img.style.cursor = "zoom-in";
+
+          img.onclick = () => {
+              const modal = document.getElementById("imageModal");
+              const modalImg = document.getElementById("imageModalImg");
+              const closeBtn = document.getElementById("imageModalClose");
+
+              if (!modal || !modalImg || !closeBtn) return;
+
+              modalImg.src = img.src;
+              modal.classList.add("active");
+
+              closeBtn.style.display = "none";
+
+              document.body.style.overflow = "hidden";
+          };
+
+        } catch (e) {
+          console.error("image load error:", e);
+        }
+      }
+    }
+
+    async function saveInvoiceDir() {
+      const dirInput = document.getElementById("invoice_base_dir");
+      const info = document.getElementById("invoiceDirInfo");
+      const base_dir = dirInput?.value?.trim() || "";
+
+      if (!base_dir) {
+        alert("Zadej složku pro faktury.");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/invoices/config", {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "x-session-id": getSessionId()
+          }),
+          body: JSON.stringify({ base_dir })
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          alert("Uložení složky selhalo: " + text);
+          return;
+        }
+
+        let data = {};
+        try { data = await res.json(); } catch (_) {}
+
+        const savedDir = data.base_dir || base_dir;
+        if (info) info.textContent = "Aktuální složka: " + savedDir;
+        logProgress("✅ Složka pro faktury uložena: " + savedDir);
+      } catch (e) {
+        console.error("saveInvoiceDir error:", e);
+        alert("Chyba při ukládání složky: " + e);
+      }
+    }
+
+    async function loadInvoiceConfig() {
+      try {
+        const res = await fetch("/api/invoices/config", {
+          headers: authHeaders({ "x-session-id": getSessionId() })
+        });
+
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const dirInput = document.getElementById("invoice_base_dir");
+        const info = document.getElementById("invoiceDirInfo");
+        const yearInput = document.getElementById("invoice_year");
+        const monthInput = document.getElementById("invoice_month");
+
+        if (dirInput) dirInput.value = data.base_dir || "";
+        if (info) info.textContent = "Aktuální složka: " + (data.base_dir || "(nenastaveno)");
+        if (yearInput) yearInput.value = data.year || new Date().getFullYear();
+        if (monthInput) monthInput.value = data.month || (new Date().getMonth() + 1);
+      } catch (e) {
+        console.error("loadInvoiceConfig error:", e);
+      }
+    }
+
+    async function openDomFullscreen(el) {
+      if (!el) return false;
+      try {
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+        else return false;
+        return true;
+      } catch (e) {
+        console.warn("requestFullscreen failed:", e);
+        return false;
+      }
+    }
+
+    async function closeDomFullscreen() {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else if (document.webkitFullscreenElement) await document.webkitExitFullscreen();
+      } catch (e) {
+        console.warn("exitFullscreen failed:", e);
+      }
+    }
+
+    async function closeFullscreen() {
+      return closeDomFullscreen();
+    }
+
+    async function openInvoiceCsv() {
+      const yearInput = document.getElementById("invoice_year");
+      const monthInput = document.getElementById("invoice_month");
+      const year = parseInt(yearInput?.value || "", 10);
+      const month = parseInt(monthInput?.value || "", 10);
+
+      if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+        alert("Zadej platný rok a měsíc (1–12).");
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/invoices/csv/${year}/${month}`, {
+          method: "GET",
+          headers: authHeaders({ "x-session-id": getSessionId() })
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          alert("Chyba při otevírání CSV: " + txt);
+          return;
+        }
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `invoices_${year}_${String(month).padStart(2, "0")}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (e) {
+        console.error("openInvoiceCsv error:", e);
+        alert("Chyba při otevírání CSV: " + e);
+      }
+    }
+
+    async function sendInvoiceCsv() {
+      const yearInput = document.getElementById("invoice_year");
+      const monthInput = document.getElementById("invoice_month");
+      const year = parseInt(yearInput?.value || "", 10);
+      const month = parseInt(monthInput?.value || "", 10);
+
+      if (isNaN(year) || isNaN(month) || month < 1 || month > 12) {
+        alert("Zadej platný rok a měsíc (1–12).");
+        return;
+      }
+
+      logProgress(`📧 Posílám fakturační CSV účetní za ${month}.${year}…`);
+
+      try {
+        const res = await fetch("/api/invoices/send_to_accountant", {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "x-session-id": getSessionId()
+          }),
+          body: JSON.stringify({ year, month })
+        });
+
+        if (!res.ok) {
+          const t = await res.text();
+          alert("Chyba při posílání CSV účetní: " + t);
+          return;
+        }
+
+        const data = await res.json();
+        logProgress("✅ CSV odesláno účetní – " + (data.csv || ""));
+        alert("Fakturační CSV bylo odesláno účetní (pokud je nastaven ACCOUNTANT_EMAIL).");
+      } catch (e) {
+        alert("Chyba při posílání CSV účetní: " + e);
+      }
+    }
+
+    let camStream = null;
+    let previewTimer = null;
+    let lastUiBox = null;
+    let lastUiBoxTs = 0;
+    const UI_HOLD_MS = 1200;
+
+    function parseRes(v) {
+      const m = String(v || "").split("x");
+      const w = parseInt(m[0] || "1280", 10);
+      const h = parseInt(m[1] || "720", 10);
+      return { w: isNaN(w) ? 1280 : w, h: isNaN(h) ? 720 : h };
+    }
+
+    function stopPreviewLoop() {
+      if (previewTimer) clearInterval(previewTimer);
+      previewTimer = null;
+    }
+
+    function startPreviewLoop() {
+      if (!getToken()) return;
+      stopPreviewLoop();
+      previewTimer = setInterval(() => {
+        sendPreviewFrame().catch(() => {});
+      }, 700);
+    }
+
+    function getCamEls() {
+      const video = document.getElementById("camVideo");
+      const overlay = document.getElementById("camOverlay");
+      const cap = document.getElementById("camCapture");
+      const fs = document.getElementById("camFullscreen");
+      const fsVideo = document.getElementById("camFsVideo");
+      const fsOverlay = document.getElementById("camFsOverlay");
+      const fsClose = document.getElementById("camFsClose");
+      return { video, overlay, cap, fs, fsVideo, fsOverlay, fsClose };
+    }
+
+    function setOverlayToVideoSize(videoEl, overlayEl) {
+      if (!videoEl || !overlayEl) return;
+      const vw = videoEl.videoWidth || 1280;
+      const vh = videoEl.videoHeight || 720;
+      overlayEl.width = vw;
+      overlayEl.height = vh;
+      const ctx = overlayEl.getContext("2d");
+      ctx.clearRect(0, 0, overlayEl.width, overlayEl.height);
+    }
+
+    function getActiveVideoAndOverlay() {
+      const { fs, fsVideo, fsOverlay, video, overlay } = getCamEls();
+      const inFs = !!(fs && fs.classList.contains("active"));
+      if (inFs && fsVideo && fsOverlay) return { v: fsVideo, o: fsOverlay };
+      return { v: video, o: overlay };
+    }
+
+    async function openFullscreen(el) {
+      if (!el) return;
+      if (document.fullscreenElement) return;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+      if (!req) return;
+      const r = req.call(el);
+      if (r && typeof r.then === "function") await r;
+    }
+
+    async function exitCamFullscreen() {
+      const { fs, fsVideo, fsOverlay, video, overlay } = getCamEls();
+      if (!fs) return;
+
+      fs.classList.remove("active");
+      fs.setAttribute("aria-hidden", "true");
+      document.body.style.overflow = "";
+      await closeDomFullscreen();
+
+      if (video && fsVideo && fsVideo.srcObject) {
+        video.srcObject = fsVideo.srcObject;
+        video.play?.().catch(() => {});
+      }
+
+      try {
+        if (fsOverlay) {
+          const ctx = fsOverlay.getContext("2d");
+          ctx.clearRect(0, 0, fsOverlay.width, fsOverlay.height);
+        }
+      } catch (_) {}
+
+      if (video) video.style.visibility = "visible";
+      if (overlay) overlay.style.visibility = "visible";
+    }
+
+    function bindFullscreenControls() {
+      const { fsClose, fs } = getCamEls();
+      if (fsClose) fsClose.addEventListener("click", exitCamFullscreen);
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && fs && fs.classList.contains("active")) {
+          exitCamFullscreen();
+        }
+      });
+
+      document.getElementById("btnStartCamFs")?.addEventListener("click", startCamera);
+      document.getElementById("btnStopCamFs")?.addEventListener("click", stopCamera);
+      document.getElementById("btnSnapFs")?.addEventListener("click", snapAndSendToAnalyze);
+    }
+
+    function boxJumpTooBig(prev, curr) {
+      if (!prev || !curr) return false;
+      const pcx = (prev.x1 + prev.x2) / 2;
+      const pcy = (prev.y1 + prev.y2) / 2;
+      const ccx = (curr.x1 + curr.x2) / 2;
+      const ccy = (curr.y1 + curr.y2) / 2;
+      const pw = Math.max(1, prev.x2 - prev.x1);
+      const ph = Math.max(1, prev.y2 - prev.y1);
+      const dx = Math.abs(ccx - pcx);
+      const dy = Math.abs(ccy - pcy);
+      return dx > pw * 0.9 || dy > ph * 0.9;
+    }
+
+    function drawBox(ctx, box, label = "") {
+      if (!box) return;
+      ctx.strokeRect(box.x1, box.y1, box.x2 - box.x1, box.y2 - box.y1);
+
+      if (label) {
+        ctx.font = "16px Arial";
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = "#00ff00";
+        ctx.strokeText(label, box.x1 + 6, Math.max(18, box.y1 - 8));
+        ctx.lineWidth = 1;
+        ctx.fillStyle = "#00ff00";
+        ctx.fillText(label, box.x1 + 6, Math.max(18, box.y1 - 8));
+      }
+    }
+
+    async function sendPreviewFrame() {
+      const { v: video, o: overlay } = getActiveVideoAndOverlay();
+      const { cap } = getCamEls();
+      if (!video || !cap || !overlay || !camStream) return;
+
+      const vw = video.videoWidth || 1280;
+      const vh = video.videoHeight || 720;
+      if (!vw || !vh) return;
+
+      const maxSide = 640;
+      const s = maxSide / Math.max(vw, vh);
+      const w = Math.max(1, Math.round(vw * s));
+      const h = Math.max(1, Math.round(vh * s));
+
+      cap.width = w;
+      cap.height = h;
+      cap.getContext("2d").drawImage(video, 0, 0, w, h);
+
+      const blob = await new Promise((res) => cap.toBlob(res, "image/jpeg", 0.7));
+      if (!blob) return;
+
+      const fd = new FormData();
+      fd.append("file", blob, "frame.jpg");
+
+      let data = null;
+
+      try {
+        if (window._previewAbort) window._previewAbort.abort();
+        const controller = new AbortController();
+        window._previewAbort = controller;
+
+        const res = await fetch("/api/detect_preview", {
+          method: "POST",
+          headers: authHeaders({ "x-session-id": getSessionId() }),
+          body: fd,
+          signal: controller.signal
+        });
+
+        if (!res.ok) return;
+        data = await res.json();
+      } catch (e) {
+        if (e.name !== "AbortError") console.warn("detect_preview failed:", e);
+        return;
+      }
+
+      if (!data || !data.ok) return;
+
+      const sx = overlay.width / w;
+      const sy = overlay.height / h;
+      const ctx = overlay.getContext("2d");
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      ctx.strokeStyle = "#00ff00";
+      ctx.lineWidth = 4;
+
+      const boxes = Array.isArray(data.boxes) ? data.boxes : [];
+      const now = Date.now();
+
+      if (boxes.length === 0) {
+        if (lastUiBox && (now - lastUiBoxTs) <= UI_HOLD_MS) drawBox(ctx, lastUiBox, "HOLD");
+        else lastUiBox = null;
+        return;
+      }
+
+      const b = boxes[0];
+      const currBox = {
+        x1: b.x1 * sx,
+        y1: b.y1 * sy,
+        x2: b.x2 * sx,
+        y2: b.y2 * sy
+      };
+
+      if (boxJumpTooBig(lastUiBox, currBox)) {
+        if (lastUiBox && (now - lastUiBoxTs) <= UI_HOLD_MS) drawBox(ctx, lastUiBox, "LOCK");
+        return;
+      }
+
+      lastUiBox = currBox;
+      lastUiBoxTs = now;
+
+      const label =
+        (data.held ? "HELD" : "YOLO") +
+        (typeof b.score === "number" ? ` ${(b.score).toFixed(2)}` : "");
+
+      drawBox(ctx, currBox, label);
+    }
+
+    async function startCamera() {
+      const { video, overlay, fs, fsVideo, fsOverlay } = getCamEls();
+      const info = document.getElementById("camInfo");
+      const facing = document.getElementById("camFacing")?.value || "environment";
+      const resVal = document.getElementById("camRes")?.value || "1280x720";
+      const { w, h } = parseRes(resVal);
+
+      stopPreviewLoop();
+
+      if (camStream) {
+        try { camStream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+        camStream = null;
+      }
+
+      if (fs) {
+        fs.classList.add("active");
+        fs.setAttribute("aria-hidden", "false");
+        document.body.style.overflow = "hidden";
+        try { await openFullscreen(fs); } catch (e) { console.warn("openFullscreen failed (ok):", e); }
+      }
+
+      const constraints = {
+        audio: false,
+        video: {
+          facingMode: { ideal: facing },
+          width: (w >= 9000 ? { ideal: 1920 } : { ideal: w }),
+          height: (h >= 9000 ? { ideal: 1080 } : { ideal: h })
+        }
+      };
+
+      try {
+        if (info) info.textContent = "Žádám o kameru…";
+        camStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        if (fsVideo && fsOverlay) {
+          fsVideo.srcObject = camStream;
+          fsVideo.onloadedmetadata = () => {
+            fsVideo.play?.().catch(() => {});
+            if (info) info.textContent = `Kamera běží: ${fsVideo.videoWidth}×${fsVideo.videoHeight} (${facing})`;
+            setOverlayToVideoSize(fsVideo, fsOverlay);
+            startPreviewLoop();
+          };
+          fsVideo.play?.().catch(() => {});
+        } else {
+          if (!video) throw new Error("Nenalezen žádný video element.");
+          video.srcObject = camStream;
+          video.onloadedmetadata = () => {
+            video.play?.().catch(() => {});
+            if (info) info.textContent = `Kamera běží: ${video.videoWidth}×${video.videoHeight} (${facing})`;
+            if (overlay) setOverlayToVideoSize(video, overlay);
+            startPreviewLoop();
+          };
+          video.play?.().catch(() => {});
+        }
+      } catch (e) {
+        console.error("startCamera error:", e);
+        stopPreviewLoop();
+
+        if (fs) {
+          fs.classList.remove("active");
+          fs.setAttribute("aria-hidden", "true");
+        }
+        document.body.style.overflow = "";
+
+        if (fsVideo) fsVideo.srcObject = null;
+        if (fsOverlay) {
+          try { fsOverlay.getContext("2d").clearRect(0, 0, fsOverlay.width, fsOverlay.height); } catch (_) {}
+        }
+
+        if (camStream) {
+          try { camStream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+          camStream = null;
+        }
+
+        if (info) info.textContent = "Kamera nejde spustit (povolení / https / zařízení).";
+        alert("Nelze spustit kameru. Tip: web musí běžet přes HTTPS na mobilu.");
+      }
+    }
+
+    async function stopCamera() {
+      const info = document.getElementById("camInfo");
+      const { video, overlay, fs, fsVideo, fsOverlay } = getCamEls();
+
+      stopPreviewLoop();
+
+      try { fsOverlay?.getContext("2d").clearRect(0, 0, fsOverlay.width, fsOverlay.height); } catch (_) {}
+      try { overlay?.getContext("2d").clearRect(0, 0, overlay.width, overlay.height); } catch (_) {}
+
+      if (camStream) {
+        try { camStream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+        camStream = null;
+      }
+
+      if (fsVideo) fsVideo.srcObject = null;
+      if (video) video.srcObject = null;
+
+      if (fs) {
+        fs.classList.remove("active");
+        fs.setAttribute("aria-hidden", "true");
+      }
+
+      document.body.style.overflow = "";
+
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else if (document.webkitFullscreenElement) await document.webkitExitFullscreen();
+      } catch (e) {
+        console.warn("exitFullscreen failed:", e);
+      }
+
+      if (info) info.textContent = "Kamera vypnutá";
+    }
+
+    async function snapAndSendToAnalyze() {
+      const { v: video } = getActiveVideoAndOverlay();
+      const { cap } = getCamEls();
+      const last = document.getElementById("lastSnap");
+      if (!video || !cap) return;
+
+      if (!camStream) return alert("Nejdřív zapni kameru.");
+      if (video.readyState < 2) return alert("Počkej, kamera se ještě načítá.");
+
+      const w = video.videoWidth || 1280;
+      const h = video.videoHeight || 720;
+
+      cap.width = w;
+      cap.height = h;
+      cap.getContext("2d").drawImage(video, 0, 0, w, h);
+
+      const blob = await new Promise((res) => cap.toBlob(res, "image/jpeg", 0.92));
+      if (!blob) return alert("Nepovedlo se vyrobit fotku.");
+
+      if (last) {
+        last.src = URL.createObjectURL(blob);
+        last.style.display = "block";
+      }
+
+      const toast = document.getElementById("camToast");
+
+      if (toast) {
+        toast.style.display = "block";
+
+        setTimeout(() => {
+          toast.style.display = "none";
+        }, 1200);
+      }
+
+      const useAi = document.getElementById("ai_filter")?.checked ? 1 : 0;
+      const recognize = document.getElementById("recognize")?.checked ? 1 : 0;
+
+      const fd = new FormData();
+      fd.append("files", blob, "mobile.jpg");
+
+      logProgress("📷 Fotka pořízena, posílám na analýzu…");
+
+      const res = await fetch(`/api/analyze/?use_ai_filter=${useAi}&recognize=${recognize}`, {
+        method: "POST",
+        headers: authHeaders({ "x-session-id": getSessionId() }),
+        body: fd
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        logProgress("❌ Analyze chyba: " + txt);
+        return alert("Analyze chyba: " + txt);
+      }
+
+      const data = await res.json();
+      logProgress("✅ Analyze OK – vytvořeno položek: " + (data?.length ?? 0));
+      loadFiltered();
+    }
+
+    async function loadFiltered() {
+      const sel = document.getElementById("filter");
+      const token = getToken();
+      const val = token && sel ? sel.value : "approved";
+
+      let url = "/api/list/?limit=100";
+      if (val === "approved") url += "&approved=1";
+      else if (val === "rejected") url += "&approved=0";
+
+      const res = await fetch(url, {
+        headers: authHeaders({ "x-session-id": getSessionId() })
+      });
+
+      if (!res.ok) {
+        console.error("list failed:", res.status);
+        return;
+      }
+
+      const data = await res.json();
+      const cont = document.getElementById("results");
+      if (!cont) return;
+
+      cont.innerHTML = "";
+      
+      data.forEach((it) => {
+        const div = document.createElement("div");
+        div.className = "card";
+
+        const token = getToken();
+        const isReady = !!it.is_ready_for_sale;
+
+        const score =
+          (it.quality_score && it.quality_score.toFixed)
+            ? it.quality_score.toFixed(1)
+            : (it.quality_score ?? "");
+
+        const productName = it.product_name || `${it.vyrobce || "Hodinky"} ${it.model || ""}`.trim();
+        const priceKc = it.price_cents ? Math.round(it.price_cents / 100) : "";
+        const desc = it.description || "";
+        
+        if (token) {
+                if (isReady) {
+                        div.style.border = "2px solid #16a34a";
+                        div.style.background = "#f0fff4";
+                } else if (it.status === "possible_duplicate" || it.duplicate_status === "possible_duplicate") {
+                        div.style.border = "2px solid #c026d3";
+                        div.style.background = "#fae8ff";
+                } else {
+                        div.style.border = "2px solid #dc2626";
+                        div.style.background = "#fff1f1";
+                }
+        }
+
+        div.innerHTML = `
+          <div><strong>${productName || "Hodinky"}</strong></div>
+          <div class="pill">${it.approved ? "✅ schváleno" : "❌ neschváleno"}</div>
+          <div class="pill">score: ${score}</div>
+          <div class="pill">stav: ${it.status || "-"}</div>
+
+          ${token ? `
+            <div class="pill">${isReady ? "🟢 připraveno k prodeji" : "🔴 chybí údaje"}</div>
+          ` : ""}
+
+          ${token && !isReady ? `
+            <div style="margin-top:.5rem; color:#b91c1c; font-weight:bold;">
+              ⚠️ Hodinky nejsou umístěny na web – chybí cena nebo popis zboží.
+            </div>
+          ` : ""}
+
+          ${it.orig_file_id ? `<img data-id="${it.orig_file_id}" class="secured-img" />` : ""}
+
+          ${token ? `
+            <label>Název zboží</label>
+            <input id="name_${it._id}" type="text" value="${productName || ""}" placeholder="Název hodinek" />
+
+            <label>Cena zboží v Kč</label>
+            <input id="price_${it._id}" type="number" min="1" step="1" value="${priceKc}" placeholder="např. 2490" />
+
+            <label>Popis zboží</label>
+            <textarea id="desc_${it._id}" rows="3" placeholder="Popis hodinek...">${desc}</textarea>
+
+            <button class="btn-ok" type="button" onclick="saveProductInfo('${it._id}')">
+              💾 Uložit cenu a popis
+            </button>
+          ` : ""}
+
+          ${!token && isReady && desc ? `
+            <div style="margin-top:.5rem;">${desc}</div>
+          ` : ""}
+
+          ${isReady && priceKc ? `
+            <div style="margin-top:.5rem; font-weight:bold;">
+              Cena: ${priceKc} Kč
+            </div>
+          ` : ""}
+
+          <div style="margin-top:.5rem; display:flex; gap:.5rem; flex-wrap:wrap;">
+            ${isReady ? `<button class="btn-ok" type="button" onclick="addToCart('${it._id}')">Objednat</button>` : ""}
+            ${token ? `<button class="btn-warn" type="button" onclick="deleteItem('${it._id}')">Smazat</button>` : ""}
+          </div>
+        `;
+
+        cont.appendChild(div);
+      });
+
+      await loadSecureImages();
+    }
+
+    async function deleteItem(id) {
+      if (!confirm("Opravdu smazat položku?")) return;
+
+      const res = await fetch("/api/item/" + encodeURIComponent(id), {
+        method: "DELETE",
+        headers: authHeaders({ "x-session-id": getSessionId() })
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        alert("Mazání selhalo: " + t);
+        return;
+      }
+
+      loadFiltered();
+    }
+
+    async function clearAllImages() {
+      if (!confirm("Opravdu smazat všechny fotky a položky?")) return;
+
+      const res = await fetch("/api/items/clear_all", {
+        method: "POST",
+        headers: authHeaders({ "x-session-id": getSessionId() })
+      });
+
+      if (!res.ok) {
+        const t = await res.text();
+        alert("Mazání selhalo: " + t);
+        return;
+      }
+
+      const data = await res.json();
+      alert(data.message || "Hotovo");
+      loadFiltered();
+    }
+
+    async function doAnalyze() {
+      const form = document.getElementById("uploadForm");
+      if (!form) return;
+
+      const input = form.querySelector('input[name="files"]');
+      if (!input || !input.files || !input.files.length) {
+        alert("Vyber aspoň jeden obrázek.");
+        return;
+      }
+
+      const useAi = document.getElementById("ai_filter")?.checked ? 1 : 0;
+      const recognize = document.getElementById("recognize")?.checked ? 1 : 0;
+
+      const fd = new FormData();
+      for (const f of input.files) fd.append("files", f);
+
+      logProgress("📤 Odesílám obrázky na server…");
+
+      try {
+        const res = await fetch(`/api/analyze/?use_ai_filter=${useAi}&recognize=${recognize}`, {
+          method: "POST",
+          headers: authHeaders({ "x-session-id": getSessionId() }),
+          body: fd
+        });
+
+        if (!res.ok) {
+          const txt = await res.text();
+          logProgress("❌ Chyba: " + txt);
+          alert("Analyze chyba: " + txt);
+          return;
+        }
+
+        const data = await res.json();
+        logProgress("✅ Hotovo, vytvořeno položek: " + (data?.length ?? 0));
+        loadFiltered();
+      } catch (e) {
+        console.error("analyze error:", e);
+        logProgress("❌ Výjimka při analyze: " + e);
+      }
+    }
+    
+    async function addToCart(itemId) {
+      if (!itemId) {
+        alert("ID položky není k dispozici.");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/cart/add", {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "x-session-id": getSessionId()
+          }),
+          body: JSON.stringify({ item_id: itemId, quantity: 1 })
+        });
+
+        if (!res.ok) {
+          const t = await res.text();
+          alert("Nepodařilo se přidat do košíku: " + t);
+          return;
+        }
+
+        const data = await res.json();
+        logProgress("🛒 Přidáno do košíku: " + (data.message || itemId));
+        await loadCart();
+      } catch (e) {
+        alert("Chyba při přidávání do košíku: " + e);
+      }
+    }
+
+    async function saveProductInfo(itemId) {
+      const name = document.getElementById("name_" + itemId)?.value?.trim() || "";
+      const priceKc = parseInt(document.getElementById("price_" + itemId)?.value || "0", 10);
+      const description = document.getElementById("desc_" + itemId)?.value?.trim() || "";
+
+      if (!name) {
+        alert("Vyplň název zboží.");
+        return;
+      }
+
+      if (!priceKc || priceKc <= 0) {
+        alert("Vyplň cenu v Kč.");
+        return;
+      }
+
+      if (!description || description.length < 5) {
+        alert("Vyplň popis zboží.");
+        return;
+      }
+
+      const res = await fetch("/api/product/update/" + encodeURIComponent(itemId), {
+        method: "POST",
+        headers: authHeaders({
+          "Content-Type": "application/json",
+          "x-session-id": getSessionId()
+        }),
+        body: JSON.stringify({
+          name,
+          description,
+          price_cents: priceKc * 100
+        })
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        alert("Uložení produktu selhalo: " + txt);
+        return;
+      }
+
+      alert("Produkt uložen a připraven k prodeji.");
+      await loadFiltered();
+    }
+
+    async function loadCart() {
+      const cont = document.getElementById("cartItems");
+      const summary = document.getElementById("cartSummary");
+      const formBox = document.getElementById("checkoutFormBox");
+      if (!cont) return;
+
+      try {
+        const res = await fetch("/api/cart", {
+          headers: authHeaders({ "x-session-id": getSessionId() })
+        });
+
+        if (!res.ok) {
+          console.error("loadCart status:", res.status);
+          return;
+        }
+
+        const data = await res.json();
+        cont.innerHTML = "";
+
+        let total = 0;
+        const items = data.items || [];
+
+        items.forEach((item) => {
+          const div = document.createElement("div");
+          div.className = "card";
+
+          const qty = item.quantity || 1;
+          const price = item.price || 0;
+          const lineTotal = price * qty;
+
+          div.innerHTML = `
+            <h3>${item.name || "Položka"}</h3>
+            <div>${qty} ks</div>
+            ${price ? `<div>${price} Kč/ks</div>` : ""}
+            ${lineTotal ? `<div><strong>${lineTotal} Kč celkem</strong></div>` : ""}
+          `;
+
+          cont.appendChild(div);
+          total += lineTotal;
+        });
+
+        if (summary) summary.textContent = "Celková cena: " + total + " Kč";
+
+        if (formBox) {
+          formBox.style.display = items.length > 0 ? "block" : "none";
+        }
+      } catch (e) {
+        console.error("loadCart error:", e);
+      }
+    }
+
+    let emailVerified = false;
+    let verifyInterval = null;
+
+    async function sendVerificationEmail() {
+      const email = document.getElementById("customerEmail")?.value?.trim() || "";
+      const first_name = document.getElementById("customerFirstName")?.value?.trim() || "";
+      const last_name = document.getElementById("customerLastName")?.value?.trim() || "";
+
+      if (!email) {
+        alert("Zadej e-mail zákazníka.");
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/cart/send-email-verification", {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "x-session-id": getSessionId()
+          }),
+          body: JSON.stringify({
+            email,
+            first_name,
+            last_name
+          })
+        });
+
+        const data = await res.json();
+        if (data.already_verified || data.verified) {
+          emailVerified = true;
+
+          const badge = document.getElementById("emailVerifiedBadge");
+          if (badge) badge.style.display = "inline-block";
+
+          const popup = window.open("", "_blank", "width=520,height=650");
+
+          if (popup) {
+            popup.document.write(`
+              <html>
+              <head>
+                <title>E-mail ověřen</title>
+                <style>
+                  body{font-family:Arial;padding:30px;text-align:center;background:#f7f8fb;}
+                  .box{background:white;padding:25px;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.1);}
+                  button{margin-top:20px;padding:14px 22px;background:#16a34a;color:white;border:0;border-radius:10px;font-weight:bold;cursor:pointer;}
+                </style>
+              </head>
+              <body>
+                <div class="box">
+                  <h2>✅ E-mail je už ověřen</h2>
+                  <p>Můžeš pokračovat zpět k platbě.</p>
+                  <button onclick="window.close()">Zpět k platbě</button>
+                </div>
+              </body>
+              </html>
+            `);
+          }
+
+          return;
+        }
+        if (!res.ok) {
+          alert(data.detail || "Nepodařilo se odeslat ověřovací e-mail.");
+          return;
+        }
+
+        startEmailVerifyPolling(email);
+
+        const mailUrl = getEmailProviderUrl(email);
+
+        const popup = window.open("", "_blank", "width=520,height=650");
+
+        if (popup) {
+          popup.document.write(`
+            <html>
+            <head>
+              <title>Potvrzení e-mailu</title>
+
+              <style>
+                body{
+                  font-family:Arial;
+                  padding:30px;
+                  text-align:center;
+                  background:#f7f8fb;
+                }
+
+                .box{
+                  background:white;
+                  padding:25px;
+                  border-radius:14px;
+                  box-shadow:0 2px 12px rgba(0,0,0,.1);
+                }
+
+                a{
+                  display:inline-block;
+                  margin-top:20px;
+                  padding:14px 22px;
+                  background:#2563eb;
+                  color:white;
+                  text-decoration:none;
+                  border-radius:10px;
+                  font-weight:bold;
+                }
+              </style>
+            </head>
+
+            <body>
+              <div class="box">
+                <h2>📧 Potvrď svůj e-mail</h2>
+
+                <p>
+                  Poslali jsme ověřovací odkaz na:
+                </p>
+
+                <strong>${email}</strong>
+
+                <p style="margin-top:20px;">
+                  Otevři svůj e-mail a potvrď adresu.
+                </p>
+
+                <a href="${mailUrl}" target="_blank">
+                  Otevřít e-mail
+                </a>
+              </div>
+            </body>
+            </html>
+          `);
+        }
+
+      } catch (e) {
+        alert("Chyba při odesílání ověřovacího e-mailu: " + e);
+      }
+    }
+
+    function startEmailVerifyPolling(email) {
+      if (verifyInterval) clearInterval(verifyInterval);
+
+      verifyInterval = setInterval(async () => {
+        try {
+          const res = await fetch(
+            "/api/cart/check-email-verified?email=" + encodeURIComponent(email),
+            {
+              headers: authHeaders({ "x-session-id": getSessionId() })
+            }
+          );
+
+          const data = await res.json();
+
+          if (data.verified) {
+            emailVerified = true;
+
+            clearInterval(verifyInterval);
+
+            const badge = document.getElementById("emailVerifiedBadge");
+
+            if (badge) {
+              badge.style.display = "inline-block";
+            }
+
+            alert("E-mail byl ověřen. Teď můžeš zaplatit.");
+          }
+
+        } catch (e) {
+          console.error("check-email-verified error:", e);
+        }
+
+      }, 3000);
+    }
+    
+    async function checkEmailAlreadyVerified() {
+        const email = document.getElementById("customerEmail")?.value?.trim() || "";
+
+        if (!email) return;
+
+        try {
+            const res = await fetch(
+                "/api/cart/check-email-verified?email=" + encodeURIComponent(email),
+                {
+                    headers: authHeaders({
+                        "x-session-id": getSessionId()
+                    })
+                }
+            );
+
+            const data = await res.json();
+
+            if (data.verified) {
+                emailVerified = true;
+
+                const badge = document.getElementById("emailVerifiedBadge");
+
+                if (badge) {
+                    badge.style.display = "inline-block";
+                }
+            }
+        } catch (e) {
+            console.error("checkEmailAlreadyVerified error:", e);
+        }
+    }
+   
+    function updateShippingAddressVisibility() {
+        const shipping = document.getElementById("shippingMethod")?.value || "";
+        const box = document.getElementById("shippingAddressBox");
+
+        const isPickup = shipping === "personal_pickup";
+
+        if (box) box.style.display = isPickup ? "none" : "block";
+    }
+
+    async function checkoutCart() {
+      const shippingSelect = document.getElementById("shippingMethod");
+      const paymentSelect = document.getElementById("paymentMethod");
+
+      const shipping_method = shippingSelect ? shippingSelect.value : "ceska_posta";
+      const payment_method = paymentSelect ? paymentSelect.value : "card";
+
+      const customer = {
+        first_name: document.getElementById("customerFirstName")?.value?.trim() || "",
+        last_name: document.getElementById("customerLastName")?.value?.trim() || "",
+        email: document.getElementById("customerEmail")?.value?.trim() || "",
+        phone: document.getElementById("customerPhone")?.value?.trim() || "",
+        street: document.getElementById("customerStreet")?.value?.trim() || "",
+        city: document.getElementById("customerCity")?.value?.trim() || "",
+        postcode: document.getElementById("customerPostcode")?.value?.trim() || "",
+        bank_account: document.getElementById("customerBankAccount")?.value?.trim() || "",
+        country: "Česká republika"
+      };
+
+      if (!customer.email) {
+        alert("Zadej e-mail zákazníka.");
+        return;
+      }
+
+      const isPickup = shipping_method === "personal_pickup";
+
+      if (!customer.first_name || !customer.last_name) {
+            alert("Vyplň jméno a příjmení.");
+            return;
+      }
+
+      if (!isPickup && (!customer.street || !customer.city || !customer.postcode)) {
+            alert("Vyplň ulici, město a PSČ.");
+            return;
+      }
+      
+      if (!emailVerified) {
+        await sendVerificationEmail();
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/cart/checkout", {
+          method: "POST",
+          headers: authHeaders({
+            "Content-Type": "application/json",
+            "x-session-id": getSessionId()
+          }),
+          body: JSON.stringify({
+            shipping_method,
+            payment_method,
+            customer
+          })
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          alert("Chyba při zahájení platby: " + text);
+          return;
+        }
+
+        const data = await res.json();
+
+        if (data.checkout_url) {
+          window.location.href = data.checkout_url;
+        } else {
+          alert("Stripe URL chybí.");
+        }
+      } catch (e) {
+        console.error("checkoutCart error:", e);
+        alert("Chyba při zahájení platby: " + e);
+      }
+    }
+
+    async function clearCart() {
+      if (!confirm("Opravdu chcete vyprázdnit košík?")) return;
+
+      try {
+        const res = await fetch("/api/cart/clear", {
+          method: "POST",
+          headers: authHeaders({ "x-session-id": getSessionId() })
+        });
+
+        if (!res.ok) {
+          const t = await res.text();
+          alert("Chyba při mazání košíku: " + t);
+          return;
+        }
+
+        logProgress("🧺 Košík vyprázdněn.");
+        await loadCart();
+      } catch (e) {
+        alert("Chyba při mazání košíku: " + e);
+      }
+    }
+
+    async function loadOrders() {
+      try {
+        const res = await fetch("/api/orders/list", {
+          headers: authHeaders({ "x-session-id": getSessionId() })
+        });
+
+        if (!res.ok) {
+          console.error("loadOrders status:", res.status);
+          return;
+        }
+
+        const orders = await res.json();
+        const cont = document.getElementById("ordersContainer");
+        if (!cont) return;
+
+        cont.innerHTML = "";
+        orders.forEach((o) => {
+          const div = document.createElement("div");
+          div.className = "card";
+          div.style.marginBottom = "1rem";
+
+          const cust = o.customer || {};
+          const itemsHtml = (o.items || [])
+            .map((it) => `<li>${it.name || "Položka"} — ${it.quantity || 0} ks</li>`)
+            .join("");
+
+          const shippedInfo = o.shipped
+            ? "(✅ odesláno " + (o.shipped_at ? new Date(o.shipped_at).toLocaleString() : "") + ")"
+            : "(📦 dosud neodesláno)";
+
+          div.innerHTML = `
+            <h3>Objednávka № ${o._id}</h3>
+            <div><strong>Zákazník:</strong> ${cust.first_name || ""} ${cust.last_name || ""}</div>
+            <div><strong>Adresa:</strong> ${cust.street || ""}, ${cust.city || ""}, ${cust.postcode || ""} ${cust.country || ""}</div>
+            <div><strong>E-mail / Telefon:</strong> ${cust.email || ""}${cust.phone ? " / " + cust.phone : ""}</div>
+            <div><strong>Položky objednávky:</strong></div>
+            <ul>${itemsHtml}</ul>
+            <div><strong>Doprava:</strong> ${o.shipping_method || ""} &nbsp; <strong>Platba:</strong> ${o.payment_method || ""}</div>
+            <div><strong>Celkem:</strong> ${o.total ?? ""} CZK</div>
+            <div><strong>Stav:</strong> ${o.status || ""} ${shippedInfo}</div>
+            ${!o.shipped ? `<button class="btn-ok" type="button" onclick="markShipped('${o._id}')">✅ Označit jako odesláno</button>` : ""}
+          `;
+
+          cont.appendChild(div);
+        });
+      } catch (e) {
+        alert("Chyba při načítání objednávek: " + e);
+        console.error("loadOrders error:", e);
+      }
+    }
+
+    async function markShipped(orderId) {
+      if (!confirm("Opravdu chcete označit objednávku jako odeslanou?")) return;
+
+      try {
+        const res = await fetch("/api/order/ship/" + encodeURIComponent(orderId), {
+          method: "POST",
+          headers: authHeaders({ "x-session-id": getSessionId() })
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error("Status " + res.status + " – " + text);
+        }
+
+        alert("Objednávka označena jako odeslána");
+        loadOrders();
+      } catch (e) {
+        alert("Chyba při změně stavu: " + e);
+        console.error("markShipped error:", e);
+      }
+    }
+
+    async function archiveOldOrders() {
+      const days = prompt("Starší než kolik dní přesunout do archivní kolekce?", "30");
+      if (days === null) return;
+
+      const d = parseInt(days, 10);
+      if (isNaN(d) || d < 0) {
+        alert("Zadej platné číslo dní.");
+        return;
+      }
+
+      const res = await fetch("/api/orders/cleanup", {
+        method: "POST",
+        headers: authHeaders({
+          "Content-Type": "application/json",
+          "x-session-id": getSessionId()
+        }),
+        body: JSON.stringify({ days: d })
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        alert("Archivace selhala: " + txt);
+        return;
+      }
+
+      const data = await res.json();
+      alert("Archivováno objednávek: " + (data.archived_count ?? 0));
+      loadOrders();
+    }
+
+    window.addEventListener("message", (event) => {
+      if (event.origin !== window.location.origin) return;
+      if (!event.data || !event.data.type) return;
+
+      if (event.data.type === "AUTH_SUCCESS") {
+        if (event.data.token) localStorage.setItem("access_token", event.data.token);
+        location.reload();
+      }
+
+      if (event.data.type === "AUTH_BACK") {
+        console.log("Auth okno zavřeno");
+      }
+    });
+
+    window.addEventListener("load", () => {
+
+      applyShopName();
+
+      let currentTheme = localStorage.getItem("shop_theme") || "classic";
+
+      applyTheme(currentTheme);
+
+      const btnTheme =
+        document.getElementById("btnTheme");
+
+      const themeMenu =
+        document.getElementById("themeMenu");
+
+      btnTheme?.addEventListener("click", () => {
+
+        if (!themeMenu) return;
+
+        themeMenu.style.display =
+          themeMenu.style.display === "block"
+            ? "none"
+            : "block";
+      });
+
+      document
+        .querySelectorAll("[data-theme]")
+        .forEach(btn => {
+
+          btn.addEventListener("click", () => {
+
+            const theme =
+              btn.getAttribute("data-theme");
+
+            if (!theme) return;
+
+            currentTheme = theme;
+
+            applyTheme(currentTheme);
+
+            if (themeMenu) {
+              themeMenu.style.display = "none";
+            }
+          });
+        });
+
+      updateAuthUI();
+
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const payment = params.get("payment");
+        const sessionId = params.get("session_id");
+
+        if (payment === "success" && sessionId) {
+          window.history.replaceState(null, "", "/");
+          logProgress("🧾 Platba úspěšná, generuji fakturu a posílám ji e-mailem…");
+
+          fetch("/api/stripe/checkout_success", {
+            method: "POST",
+            headers: authHeaders({
+              "Content-Type": "application/json",
+              "x-session-id": getSessionId()
+            }),
+            body: JSON.stringify({ session_id: sessionId })
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data.already_invoiced) {
+                logProgress("ℹ️ Faktura už byla vytvořena: " + (data.invoice_number || ""));
+                alert("Objednávka už byla zpracována. Faktura: " + (data.invoice_number || ""));
+                return;
+              }
+
+              if (data.ok && data.email_sent) {
+                logProgress("✅ Faktura vygenerována a e-mail úspěšně odeslán.");
+                alert("Objednávka byla zaplacena, faktura ti byla odeslána na email.");
+              } else if (data.ok) {
+                logProgress("✅ Faktura vygenerována, ale e-mail se nepodařilo odeslat.");
+                alert("Platba proběhla, ale fakturu se nepodařilo odeslat e-mailem.");
+              } else {
+                logProgress("❌ Chyba při generování faktury.");
+                alert("Platba proběhla, ale nastala chyba při generování faktury.");
+              }
+            })
+            .catch((e) => {
+              console.error("checkout_success error:", e);
+              logProgress("❌ Výjimka při generování faktury: " + e);
+              alert("Platba proběhla, ale dokončení objednávky spadlo.");
+            });
+        }
+      } catch (e) {
+        console.error("URL param check failed:", e);
+      }
+
+      bindFullscreenControls();
+
+      const imageModal = document.getElementById("imageModal");
+      const imageModalClose = document.getElementById("imageModalClose");
+      const imageModalImg = document.getElementById("imageModalImg");
+
+      function closeImageModal() {
+        if (!imageModal || !imageModalImg) return;
+
+        imageModal.classList.remove("active");
+        imageModalImg.src = "";
+        document.body.style.overflow = "";
+      }
+
+      function toggleCloseButton() {
+        const closeBtn = document.getElementById("imageModalClose");
+
+        if (!closeBtn) return;
+
+        closeBtn.style.display =
+          closeBtn.style.display === "none" ? "block" : "none";
+      }
+
+      imageModalClose?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeImageModal();
+      });
+
+      imageModalImg?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        toggleCloseButton();
+      });
+
+      imageModal?.addEventListener("click", () => {
+        toggleCloseButton();
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          closeImageModal();
+        }
+      });
+
+      document.getElementById("customerEmail")?.addEventListener("input", () => {
+        emailVerified = false;
+
+        const badge = document.getElementById("emailVerifiedBadge");
+        if (badge) badge.style.display = "none";
+
+        if (verifyInterval) {
+          clearInterval(verifyInterval);
+          verifyInterval = null;
+        }
+        
+        setTimeout(() => {
+            checkEmailAlreadyVerified();
+        }, 500);
+      });
+
+      document.getElementById("btnAnalyze")?.addEventListener("click", doAnalyze);
+      document.getElementById("btnClearAll")?.addEventListener("click", clearAllImages);
+      document.getElementById("btnSaveInvoiceDir")?.addEventListener("click", saveInvoiceDir);
+      document.getElementById("btnOpenCsv")?.addEventListener("click", openInvoiceCsv);
+      document.getElementById("btnSendCsv")?.addEventListener("click", sendInvoiceCsv);
+      document.getElementById("btnCheckout")?.addEventListener("click", checkoutCart);
+      document.getElementById("btnClearCart")?.addEventListener("click", clearCart);
+      document.getElementById("btnStartCam")?.addEventListener("click", startCamera);
+      document.getElementById("btnStopCam")?.addEventListener("click", stopCamera);
+      document.getElementById("btnSnap")?.addEventListener("click", snapAndSendToAnalyze);
+      document.getElementById("btnLoadOrders")?.addEventListener("click", loadOrders);
+      document.getElementById("btnArchiveOrders")?.addEventListener("click", archiveOldOrders);
+      document.getElementById("shippingMethod")?.addEventListener("change", updateShippingAddressVisibility);
+      updateShippingAddressVisibility();
+     
+      document.getElementById("btnLogout")?.addEventListener("click", () => {
+        console.log("🔓 Odhlašuju uživatele...");
+        localStorage.removeItem("access_token");
+        sessionStorage.removeItem("x_session_id");
+        updateAuthUI();
+        loadFiltered();
+        loadCart();
+
+        const orders = document.getElementById("ordersContainer");
+        if (orders) orders.innerHTML = "";
+
+        const progress = document.getElementById("progress");
+        if (progress) progress.textContent = "Odhlášeno.";
+
+        alert("Byl jsi odhlášen.");
+      });
+
+      let authWindow = null;
+
+      function openAuthPopup(path, name) {
+        if (authWindow && !authWindow.closed) {
+          authWindow.focus();
+          return;
+        }
+
+        authWindow = window.open(
+          path,
+          name,
+          "width=560,height=760,resizable=yes,scrollbars=yes"
+        );
+      }
+
+      document.getElementById("btnOpenLogin")?.addEventListener("click", () => {
+        openAuthPopup("/login", "loginWindow");
+      });
+
+      document.getElementById("btnOpenRegister")?.addEventListener("click", () => {
+        openAuthPopup("/register", "registerWindow");
+      });
+
+      document.getElementById("btnOpenForgot")?.addEventListener("click", () => {
+        openAuthPopup("/forgot", "forgotWindow");
+      });
+
+      if (getToken()) {
+        loadOrders();
+        loadInvoiceConfig();
+      }
+
+      loadFiltered();
+      loadCart();
+    });
+  </script>
+
+  <div id="imageModal" class="image-modal">
+    <button id="imageModalClose" class="image-modal-close" type="button">✕</button>
+    <img id="imageModalImg" class="image-modal-img" alt="Náhled obrázku">
+  </div>
+</body>
+</html>
